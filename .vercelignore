@@ -1,0 +1,6 @@
+raw
+.tools
+shots
+node_modules
+dist
+*.log
