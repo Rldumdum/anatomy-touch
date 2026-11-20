@@ -96,7 +96,7 @@ await page.click('#quiz-hint');
 await page.click('#quiz-hint');
 await page.click('#quiz-hint');
 await shot('11-quiz-hints');
-const answer = await api(() => window.__anatomy.quiz['current'].item.name);
+const answer = await api(() => window.__anatomy.quiz['current'].item.key);
 await page.fill('#quiz-input', answer.toLowerCase().replace(' muscle', ''));
 await page.click('#quiz-form button[type=submit]');
 await page.waitForTimeout(300);

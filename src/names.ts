@@ -81,9 +81,53 @@ export const ALIASES: Record<string, string[]> = {
   'External intercostal muscles': ['external intercostals', 'external intercostal'],
   'Internal intercostal muscles': ['internal intercostals', 'internal intercostal'],
   'Levator scapulae': ['levator scapula'],
+  // whole muscles (used when the quiz asks for the muscle rather than its heads)
+  'Deltoid muscle': ['delts', 'deltoids'],
+  'Trapezius muscle': ['traps', 'trapezoid'],
+  'Pectoralis major muscle': ['pec major', 'pecs', 'pectoralis'],
+  'Biceps brachii': ['biceps'],
+  'Triceps brachii': ['triceps'],
+  'Biceps femoris': ['hamstring biceps'],
+  'Gastrocnemius': ['gastroc', 'gastrocnemius muscle'],
+  'Flexor carpi ulnaris': ['fcu'],
+  'Extensor carpi ulnaris': ['ecu'],
+  'Flexor digitorum superficialis': ['fds'],
+  'Masseter': ['masseter muscle'],
+  'Orbicularis oculi': ['orbicularis oculi muscle'],
+  'Digastric muscle': ['digastric'],
+  'Lateral pterygoid muscle': ['lateral pterygoid'],
 };
 
-/** Readable short names used in multiple-choice options. */
+/** Readable short names: atlases drop the trailing "muscle". */
 export function pretty(name: string) {
   return name.replace(/ muscle$/, '');
+}
+
+/** Everyday descriptors for the official part names. */
+const PART_NOTE: Record<string, string> = {
+  'Clavicular part of deltoid muscle': 'anterior fibres',
+  'Acromial part of deltoid muscle': 'middle fibres',
+  'Scapular spinal part of deltoid muscle': 'posterior fibres',
+  'Descending part of trapezius muscle': 'upper fibres',
+  'Transverse part of trapezius muscle': 'middle fibres',
+  'Ascending part of trapezius muscle': 'lower fibres',
+  'Clavicular head of pectoralis major muscle': 'upper fibres',
+  'Sternocostal head of pectoralis major muscle': 'middle fibres',
+  'Abdominal part of pectoralis major muscle': 'lowest fibres',
+};
+
+const PART_RE = /^(.*? (?:head|part|belly|parts)) of (.+)$/i;
+
+/** Split "Acromial part of deltoid muscle" into title "Deltoid" and subtitle "Acromial part · middle fibres". */
+export function nameParts(name: string, parent: string | null) {
+  const m = name.match(PART_RE);
+  if (!parent || !m) return { title: pretty(name), sub: '' };
+  const part = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+  return { title: pretty(parent), sub: PART_NOTE[name] ? `${part} · ${PART_NOTE[name]}` : part };
+}
+
+/** One-line label, e.g. "Deltoid, acromial part". */
+export function fullLabel(name: string, parent: string | null) {
+  const { title, sub } = nameParts(name, parent);
+  return sub ? `${title}, ${sub.split(' · ')[0].toLowerCase()}` : title;
 }

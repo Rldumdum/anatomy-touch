@@ -5,7 +5,7 @@ import { Anatomy, displaySide, type Layer, type Part } from './anatomy';
 import { SoftTissue } from './soft';
 import { Input } from './input';
 import { Quiz, viewDirFor } from './quiz';
-import { norm } from './names';
+import { fullLabel, nameParts, norm, pretty } from './names';
 import infoData from './data/info.json';
 
 type Info = Record<string, { summary: string; function: string; structure: string; url: string | null }>;
@@ -52,22 +52,22 @@ function renderInfo(p: Part | null) {
   const card = $('info');
   if (!p || mode !== 'explore') { card.hidden = true; return; }
   card.hidden = false;
-  $('info-crumb').textContent = [p.region, p.group !== p.region ? p.group : ''].filter(Boolean).join(' · ');
-  $('info-name').textContent = p.name;
-  const chips = $('info-chips');
-  chips.innerHTML = '';
-  const chip = (text: string, onClick?: () => void) => {
+  $('info-crumb').textContent = [p.region, p.group !== p.region ? p.group.toLowerCase() : ''].filter(Boolean).join(' / ');
+  const { title, sub } = nameParts(p.name, p.parent);
+  $('info-name').textContent = title;
+  $('info-sub').textContent = sub;
+  const facts = $('info-chips');
+  facts.innerHTML = '';
+  const fact = (text: string, onClick?: () => void) => {
     const c = document.createElement(onClick ? 'button' : 'span');
-    c.className = `chip${onClick ? ' link' : ''}`;
     c.textContent = text;
     if (onClick) c.addEventListener('click', onClick);
-    chips.appendChild(c);
+    facts.appendChild(c);
   };
-  if (p.side) chip(displaySide(p));
-  chip(KIND_LABEL[p.kind] ?? p.kind);
-  if (p.parent) chip(`Part of ${p.parent.replace(/ muscle$/, '')}`, () => isolateFamily(p));
+  fact([displaySide(p), KIND_LABEL[p.kind] ?? p.kind].filter(Boolean).join(' ').toLowerCase().replace(/^./, (s) => s.toUpperCase()));
+  if (p.parent) fact(`Show whole ${pretty(p.parent).toLowerCase()}`, () => isolateFamily(p));
   const otherSide = anatomy.parts.find((q) => q.name === p.name && q !== p && q.side);
-  if (otherSide) chip(`Mirror: ${displaySide(otherSide)}`, () => selectPart(otherSide, true));
+  if (otherSide) fact(`Go to ${otherSide.side} side`, () => selectPart(otherSide, true));
 
   const isMuscle = p.layer === 'muscle' && p.kind === 'muscle';
   (card.querySelector('[data-act="flex"]') as HTMLElement).hidden = !isMuscle;
@@ -82,7 +82,7 @@ function renderInfo(p: Part | null) {
   const para = (text: string) => { const el = document.createElement('p'); el.textContent = text; body.appendChild(el); };
   const head = (text: string) => { const el = document.createElement('h3'); el.textContent = text; body.appendChild(el); };
   if (info) {
-    if (!INFO[p.name] && p.parent) { head(`About the ${p.parent.replace(/ muscle$/, '')}`); }
+    if (!INFO[p.name] && p.parent) { head(`About the ${pretty(p.parent).toLowerCase()}`); }
     para(info.summary);
     if (info.function) { head('Function'); para(info.function); }
     else if (info.structure) { head('Structure'); para(info.structure); }
@@ -132,7 +132,7 @@ $('info').addEventListener('click', (e) => {
     case 'hide':
       anatomy.hide(p);
       selectPart(null);
-      toast(`Peeled away ${p.name}. “Show all” brings it back.`);
+      toast(`Peeled away the ${fullLabel(p.name, p.parent).toLowerCase()}. Restore brings it back.`);
       break;
     case 'flex':
       soft.flex(p);
@@ -140,7 +140,7 @@ $('info').addEventListener('click', (e) => {
       break;
   }
 });
-$('info').querySelector('.card-close')!.addEventListener('click', () => selectPart(null));
+$('info').querySelector('.close')!.addEventListener('click', () => selectPart(null));
 
 // ---------- rail ----------
 function bindToggle(id: string, get: () => boolean, set: (on: boolean) => void) {
@@ -174,7 +174,7 @@ $('btn-reset').addEventListener('click', () => {
 $('btn-showall').addEventListener('click', () => {
   anatomy.showAll();
   renderInfo(anatomy.selected);
-  toast('All structures restored.');
+  toast('Everything is back in place.');
 });
 anatomy.onChange = () => {
   const n = anatomy.hidden.length + anatomy.autoPeeled.size + (anatomy.isolated ? 1 : 0);
@@ -190,7 +190,7 @@ anatomy.onChange = () => {
 // ---------- mode ----------
 function setMode(m: 'explore' | 'quiz') {
   mode = m;
-  for (const b of document.querySelectorAll<HTMLButtonElement>('.segmented button')) b.setAttribute('aria-selected', String(b.dataset.mode === m));
+  for (const b of document.querySelectorAll<HTMLButtonElement>('.top .seg button')) b.setAttribute('aria-selected', String(b.dataset.mode === m));
   selectPart(null);
   if (m === 'quiz') {
     if (!anatomy.layerOn.muscle) { anatomy.setLayer('muscle', true); paintMuscles(); }
@@ -198,7 +198,7 @@ function setMode(m: 'explore' | 'quiz') {
     quiz.enter();
   } else quiz.exit();
 }
-for (const b of document.querySelectorAll<HTMLButtonElement>('.segmented button')) b.addEventListener('click', () => setMode(b.dataset.mode as 'explore' | 'quiz'));
+for (const b of document.querySelectorAll<HTMLButtonElement>('.top .seg button')) b.addEventListener('click', () => setMode(b.dataset.mode as 'explore' | 'quiz'));
 
 // ---------- browser ----------
 let browserLayer: Layer = 'muscle';
@@ -210,10 +210,11 @@ function renderBrowser() {
   const byName = new Map<string, Part[]>();
   for (const p of anatomy.parts) {
     if (p.layer !== browserLayer) continue;
-    const n = norm(p.name);
+    const label = fullLabel(p.name, p.parent);
+    const n = norm(`${label} ${p.name}`);
     if (words.length && !words.every((w) => n.includes(w))) continue;
-    if (!byName.has(p.name)) byName.set(p.name, []);
-    byName.get(p.name)!.push(p);
+    if (!byName.has(label)) byName.set(label, []);
+    byName.get(label)!.push(p);
   }
   const regions = new Map<string, [string, Part[]][]>();
   for (const [name, ps] of [...byName].sort((a, b) => a[0].localeCompare(b[0]))) {
@@ -221,17 +222,20 @@ function renderBrowser() {
     if (!regions.has(r)) regions.set(r, []);
     regions.get(r)!.push([name, ps]);
   }
-  if (!regions.size) list.innerHTML = '<p style="padding:16px;color:var(--muted)">No matches.</p>';
+  if (!regions.size) list.innerHTML = '<p class="empty">Nothing matches that. Try part of a name, like “glut” or “radius”.</p>';
   for (const [region, rows] of [...regions].sort((a, b) => a[0].localeCompare(b[0]))) {
     const h = document.createElement('h4');
-    h.textContent = `${region} · ${rows.length}`;
+    h.textContent = `${region} — ${rows.length}`;
     list.appendChild(h);
     for (const [name, ps] of rows) {
       const row = document.createElement('div');
       row.className = 'row';
       const nm = document.createElement('div');
       nm.className = 'nm';
-      nm.innerHTML = `${name}<small>${ps[0].group !== region ? ps[0].group : ''}</small>`;
+      const small = document.createElement('small');
+      small.textContent = ps[0].group !== region ? ps[0].group : '';
+      nm.textContent = name;
+      nm.appendChild(small);
       row.appendChild(nm);
       const sides = document.createElement('div');
       sides.className = 'sides';
@@ -257,7 +261,7 @@ function goTo(p: Part) {
   const eye = viewer.focus(p.centerV, p.radius, viewDirFor(p));
   if (p.layer === 'muscle') {
     const n = anatomy.reveal(p, eye);
-    if (n) toast(`Peeled ${n} overlying muscle${n > 1 ? 's' : ''} away. “Show all” restores them.`);
+    if (n) toast(`Peeled ${n} overlying muscle${n > 1 ? 's' : ''} away. Restore puts them back.`);
   }
   if (matchMedia('(max-width: 900px), (orientation: portrait)').matches) $('browser').hidden = true;
 }
@@ -280,7 +284,7 @@ for (const b of document.querySelectorAll<HTMLButtonElement>('#browser-tabs butt
 // ---------- help ----------
 $('btn-help').addEventListener('click', () => { $('help').hidden = false; });
 $('help').addEventListener('click', (e) => {
-  if (e.target === $('help') || (e.target as HTMLElement).closest('.card-close')) $('help').hidden = true;
+  if (e.target === $('help') || (e.target as HTMLElement).closest('.close')) $('help').hidden = true;
 });
 
 // ---------- gesture mode ----------
@@ -298,7 +302,7 @@ $('btn-gesture').addEventListener('click', async () => {
     viewer.hold('gesture', false);
     return;
   }
-  if (!navigator.mediaDevices?.getUserMedia) { toast('Camera not available in this browser.'); return; }
+  if (!navigator.mediaDevices?.getUserMedia) { toast('This browser can’t use the camera.'); return; }
   btn.setAttribute('aria-pressed', 'true');
   $('gesture-cam').hidden = false;
   viewer.hold('gesture', true);
@@ -333,7 +337,7 @@ $('btn-gesture').addEventListener('click', async () => {
     await gesture.start();
   } catch (err) {
     console.error(err);
-    toast('Could not start the camera — check camera permission.');
+    toast('The camera didn’t start. Allow camera access in Settings and try again.');
     btn.setAttribute('aria-pressed', 'false');
     $('gesture-cam').hidden = true;
     viewer.hold('gesture', false);
@@ -360,7 +364,7 @@ viewer.onFrame = (dt, t) => {
   const b = anatomy.update(dt, t);
   return a || b;
 };
-viewer.onQualityDrop = () => toast('Switched to fast rendering for smoother motion.');
+viewer.onQualityDrop = () => toast('Switched to lighter rendering to keep motion smooth.');
 
 // ---------- boot ----------
 (async () => {
@@ -377,6 +381,8 @@ viewer.onQualityDrop = () => toast('Switched to fast rendering for smoother moti
   }
   quiz = new Quiz(anatomy, viewer, soft);
   quiz.toast = toast;
+  const wholeMuscles = new Set(anatomy.parts.filter((p) => p.kind === 'muscle').map((p) => p.parent ?? p.name)).size;
+  $('brand-count').textContent = `${wholeMuscles} muscles · full skeleton`;
   anatomy.refresh();
   viewer.invalidate();
   // let the first frames compile shaders behind the loader

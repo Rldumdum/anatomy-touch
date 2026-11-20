@@ -81,7 +81,7 @@ export class GestureControl {
     this.overlay.width = this.video.videoWidth || 640;
     this.overlay.height = this.video.videoHeight || 480;
     this.running = true;
-    this.cb.status('Show your hand ✋');
+    this.cb.status('Show your hand to the camera');
     this.loop();
   }
 
@@ -130,7 +130,7 @@ export class GestureControl {
 
   private handle(hands: NormalizedLandmark[][]) {
     if (!hands.length) {
-      if (this.prevPose !== 'none') this.cb.status('Show your hand ✋');
+      if (this.prevPose !== 'none') this.cb.status('Show your hand to the camera');
       if (this.pinch) { this.cb.pinchEnd(this.smooth!.x, this.smooth!.y, false); this.pinch = null; }
       this.prevPose = 'none';
       this.prevPalm = null;

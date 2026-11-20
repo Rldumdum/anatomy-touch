@@ -6,3 +6,5 @@ raw
 shots
 *.log
 .DS_Store
+
+.vercel

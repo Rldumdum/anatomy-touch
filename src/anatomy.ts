@@ -67,7 +67,7 @@ export class Anatomy {
     const total = Object.values(sizes).reduce((a, b) => a + b, 0);
     const report = () => {
       const sum = Object.values(loaded).reduce((a, b) => a + b, 0);
-      onProgress(Math.min(0.97, sum / total), `Loading anatomy… ${(sum / 1e6).toFixed(1)} MB`);
+      onProgress(Math.min(0.97, sum / total), `Loading model  ${(sum / 1e6).toFixed(1)} / 12.0 MB`);
     };
     const metaById = new Map(PARTS_META.map((m) => [m.id, m]));
     await Promise.all(
@@ -144,23 +144,28 @@ export class Anatomy {
    * Peel away any muscles that sit between `eye` and the visible face of `target`.
    * Returns how many were peeled.
    */
-  reveal(target: Part, eye: THREE.Vector3) {
+  reveal(target: Part | Part[], eye: THREE.Vector3) {
+    const targets = Array.isArray(target) ? target : [target];
     this.autoPeeled.clear();
     for (const p of this.parts) p.mesh.visible = this.isVisible(p);
-    const others = this.parts.filter((p) => p !== target && p.mesh.visible && p.layer === 'muscle').map((p) => p.mesh);
-    const pos = target.mesh.geometry.attributes.position;
-    const nrm = target.mesh.geometry.attributes.normal;
+    const others = this.parts.filter((p) => !targets.includes(p) && p.mesh.visible && p.layer === 'muscle').map((p) => p.mesh);
     const rc = new THREE.Raycaster();
     const v = new THREE.Vector3(), n = new THREE.Vector3(), dir = new THREE.Vector3();
     const votes = new Map<Part, number>();
     let samples = 0;
-    const step = Math.max(1, Math.floor(pos.count / 160));
-    for (let i = 0; i < pos.count && samples < 40; i += step) {
+    const perTarget = Math.ceil(40 / targets.length);
+    for (const t of targets) {
+    const pos = t.mesh.geometry.attributes.position;
+    const nrm = t.mesh.geometry.attributes.normal;
+    const step = Math.max(1, Math.floor(pos.count / (perTarget * 4)));
+    let local = 0;
+    for (let i = 0; i < pos.count && local < perTarget; i += step) {
       v.fromBufferAttribute(pos, i);
       n.fromBufferAttribute(nrm, i).normalize();
       dir.copy(eye).sub(v);
       if (n.dot(dir) <= 0) continue; // back-facing sample
       samples++;
+      local++;
       const dist = dir.length();
       rc.set(eye, dir.multiplyScalar(-1 / dist));
       rc.far = dist - 0.003;
@@ -168,6 +173,7 @@ export class Anatomy {
         const p = this.byMesh.get(h.object)!;
         votes.set(p, (votes.get(p) ?? 0) + 1);
       }
+    }
     }
     for (const [p, c] of votes) if (c >= Math.max(2, samples * 0.08)) this.autoPeeled.add(p);
     this.refresh();
@@ -220,7 +226,7 @@ export class Anatomy {
 
   private applyXray() {
     for (const p of this.parts) {
-      const ghost = this.xray && p.layer === 'muscle' && p !== this.selected;
+      const ghost = this.xray && p.layer === 'muscle' && p !== this.selected && !this.selectedGroup.includes(p);
       const m = p.material;
       if (m.transparent !== ghost) {
         m.transparent = ghost;
@@ -243,11 +249,15 @@ export class Anatomy {
   }
 
   // ---------- selection & highlight ----------
-  select(p: Part | null) {
-    if (this.selected === p) return;
-    if (this.selected) this.highlightAnim.set(this.selected, 0);
+  /** Other parts highlighted together with the selection (e.g. all heads of a muscle). */
+  selectedGroup: Part[] = [];
+
+  select(p: Part | null, group: Part[] = []) {
+    const g = p ? [...new Set([p, ...group])] : [];
+    for (const q of [this.selected, ...this.selectedGroup]) if (q && !g.includes(q)) this.highlightAnim.set(q, 0);
     this.selected = p;
-    if (p) this.highlightAnim.set(p, 1);
+    this.selectedGroup = g.filter((q) => q !== p);
+    for (const q of g) this.highlightAnim.set(q, 1);
     this.applyXray();
     this.updateAttachments();
     this.onChange();
