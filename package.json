@@ -1,0 +1,31 @@
+{
+  "name": "anatomy-touch",
+  "version": "1.0.0",
+  "description": "Touch-first 3D human anatomy atlas for tablets: muscles and bones you can poke, peel and quiz yourself on.",
+  "scripts": {
+    "dev": "vite --port 5260 --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5261 --host",
+    "build:model": "node scripts/build-model.mjs && node scripts/fetch-descriptions.mjs",
+    "shots": "node scripts/shots.mjs"
+  },
+  "license": "CC-BY-SA-4.0",
+  "type": "module",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.18",
+    "n8ao": "^1.9.4",
+    "three": "^0.170.0",
+    "three-mesh-bvh": "^0.8.3"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "@types/three": "^0.170.0",
+    "meshoptimizer": "^0.22.0",
+    "playwright": "1.49",
+    "typescript": "5.6",
+    "vite": "^6.4.6"
+  },
+  "private": true
+}

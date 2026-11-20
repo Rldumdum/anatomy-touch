@@ -1,0 +1,8 @@
+node_modules
+dist
+raw
+.tools
+.vercel
+shots
+*.log
+.DS_Store

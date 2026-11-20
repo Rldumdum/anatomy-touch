@@ -1,0 +1,14 @@
+{
+  "name": "Anatomy Touch",
+  "short_name": "Anatomy",
+  "description": "Touch-first 3D human anatomy: muscles and bones you can poke, peel and quiz yourself on.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0f0d0c",
+  "theme_color": "#0f0d0c",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

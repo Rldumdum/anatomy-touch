@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f0d0c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Anatomy Touch" />
+    <meta name="description" content="Touch-first 3D human anatomy for iPad and tablets. Rotate, pinch and poke 450+ real muscles and the full skeleton, then quiz yourself." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Anatomy Touch</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="3D anatomy model"></canvas>
+
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-logo" /></svg>
+        <span>Anatomy <em>Touch</em></span>
+      </div>
+      <div class="segmented" role="tablist" aria-label="Mode">
+        <button role="tab" data-mode="explore" aria-selected="true">Explore</button>
+        <button role="tab" data-mode="quiz" aria-selected="false">Quiz</button>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="btn-search" aria-label="Find a structure"><svg><use href="#i-search" /></svg></button>
+        <button class="icon-btn" id="btn-gesture" aria-label="Hand gesture mode" aria-pressed="false"><svg><use href="#i-hand" /></svg><span class="label">Gesture</span></button>
+        <button class="icon-btn" id="btn-help" aria-label="Help"><svg><use href="#i-help" /></svg></button>
+      </div>
+    </header>
+
+    <nav class="rail" aria-label="Layers and view">
+      <button class="rail-btn" id="tg-muscles" aria-pressed="true"><svg><use href="#i-muscle" /></svg><span>Muscles</span></button>
+      <button class="rail-btn" id="tg-bones" aria-pressed="true"><svg><use href="#i-bone" /></svg><span>Bones</span></button>
+      <hr />
+      <button class="rail-btn" id="tg-xray" aria-pressed="false"><svg><use href="#i-xray" /></svg><span>X-ray</span></button>
+      <button class="rail-btn" id="tg-attach" aria-pressed="true"><svg><use href="#i-attach" /></svg><span>Attach</span></button>
+      <hr />
+      <button class="rail-btn" id="btn-reset"><svg><use href="#i-reset" /></svg><span>Reset</span></button>
+      <button class="rail-btn" id="btn-showall" disabled><svg><use href="#i-eye" /></svg><span>Show all</span><b class="badge" hidden>0</b></button>
+    </nav>
+
+    <aside class="card" id="info" hidden>
+      <button class="card-close icon-btn" aria-label="Close"><svg><use href="#i-close" /></svg></button>
+      <p class="eyebrow" id="info-crumb"></p>
+      <h2 id="info-name"></h2>
+      <div class="chips" id="info-chips"></div>
+      <div class="actions">
+        <button class="pill" data-act="focus"><svg><use href="#i-focus" /></svg>Focus</button>
+        <button class="pill" data-act="isolate"><svg><use href="#i-isolate" /></svg><span>Isolate</span></button>
+        <button class="pill" data-act="hide"><svg><use href="#i-eyeoff" /></svg>Peel away</button>
+        <button class="pill accent" data-act="flex"><svg><use href="#i-flex" /></svg>Contract</button>
+      </div>
+      <div class="legend" id="info-legend" hidden>
+        <span><i class="dot origin"></i>Origin</span><span><i class="dot insertion"></i>Insertion</span>
+      </div>
+      <div class="prose" id="info-body"></div>
+    </aside>
+
+    <section class="quizbar" id="quizbar" hidden>
+      <div class="scope" id="quiz-scope"></div>
+      <label class="switch"><input type="checkbox" id="quiz-core" checked /><span>Core muscles</span></label>
+      <div class="score"><span id="quiz-progress">0 / 0</span><span class="sep"></span><span id="quiz-points">0 pts</span><span class="streak" id="quiz-streak"></span></div>
+      <button class="pill accent" id="quiz-next"><svg><use href="#i-target" /></svg>Next muscle</button>
+    </section>
+
+    <aside class="card quizcard" id="quizcard" hidden>
+      <button class="card-close icon-btn" aria-label="Close"><svg><use href="#i-close" /></svg></button>
+      <p class="eyebrow">Name this muscle</p>
+      <form id="quiz-form" autocomplete="off">
+        <input id="quiz-input" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Type the muscle name…" />
+        <button class="pill accent" type="submit">Check</button>
+      </form>
+      <p class="feedback" id="quiz-feedback" aria-live="polite"></p>
+      <div class="hints" id="quiz-hints"></div>
+      <div class="choices" id="quiz-choices"></div>
+      <div class="actions">
+        <button class="pill" id="quiz-hint"><svg><use href="#i-bulb" /></svg><span>Hint</span></button>
+        <button class="pill" id="quiz-reveal"><svg><use href="#i-eye" /></svg>Reveal</button>
+        <button class="pill" id="quiz-skip"><svg><use href="#i-skip" /></svg>Skip</button>
+      </div>
+    </aside>
+
+    <aside class="drawer" id="browser" hidden>
+      <div class="drawer-head">
+        <input id="browser-q" type="search" placeholder="Search 450+ structures" autocomplete="off" autocapitalize="none" spellcheck="false" />
+        <button class="icon-btn" id="browser-close" aria-label="Close"><svg><use href="#i-close" /></svg></button>
+      </div>
+      <div class="tabs" id="browser-tabs">
+        <button data-layer="muscle" aria-selected="true">Muscles</button>
+        <button data-layer="bone" aria-selected="false">Bones</button>
+      </div>
+      <div class="drawer-list" id="browser-list"></div>
+    </aside>
+
+    <div class="hud" id="hud">
+      <span><b>Drag</b> rotate</span><span><b>Pinch</b> zoom</span><span><b>Two fingers</b> pan</span><span><b>Tap</b> poke &amp; select</span><span><b>Hold</b> press in</span><span><b>Double-tap</b> focus</span>
+    </div>
+
+    <div class="gesture-cam" id="gesture-cam" hidden>
+      <video id="gesture-video" playsinline muted></video>
+      <canvas id="gesture-overlay"></canvas>
+      <div class="gesture-status" id="gesture-status">Starting camera…</div>
+      <ul class="gesture-legend">
+        <li><b>✋ Open palm</b> move to rotate</li>
+        <li><b>🤏 Pinch</b> tap to select, hold to squeeze</li>
+        <li><b>✊ Fist</b> move up / down to zoom</li>
+        <li><b>☝️ Point</b> aim the cursor</li>
+      </ul>
+    </div>
+    <div class="hand-cursor" id="hand-cursor" hidden></div>
+
+    <div class="modal" id="help" hidden>
+      <div class="modal-card">
+        <button class="card-close icon-btn" aria-label="Close"><svg><use href="#i-close" /></svg></button>
+        <h2>How to use</h2>
+        <div class="help-grid">
+          <div><h3>Touch</h3><p>Drag with one finger to rotate, pinch to zoom, drag with two fingers to pan. Tap a muscle to poke it, hold to press in, double-tap to fly to it.</p></div>
+          <div><h3>Layers</h3><p>Toggle <b>Muscles</b> and <b>Bones</b> on the left. <b>X-ray</b> ghosts the muscles so the skeleton shows through. <b>Peel away</b> removes one muscle to expose the deeper layer.</p></div>
+          <div><h3>Quiz</h3><p>Switch to <b>Quiz</b>, tap any muscle (or press <b>Next muscle</b>) and type its name. Hints cost points. Left/right doesn't matter.</p></div>
+          <div><h3>Gesture mode</h3><p>Uses the front camera to track your hand: open palm rotates, pinch selects, fist zooms. Video stays on your device.</p></div>
+        </div>
+        <p class="credits">3D models: <a href="https://www.z-anatomy.com/" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), derived from <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/" target="_blank" rel="noopener">BodyParts3D</a> © The Database Center for Life Science (CC BY-SA 2.1 JP / CC BY 4.0). Descriptions adapted from Wikipedia (CC BY-SA). This app is released under CC BY-SA 4.0.</p>
+      </div>
+    </div>
+
+    <div class="loader" id="loader">
+      <div class="loader-inner">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-logo" /></svg>
+        <p id="loader-text">Loading anatomy…</p>
+        <div class="bar"><i id="loader-bar"></i></div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-logo" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm-6 9c2 1 4 1.5 6 1.5s4-.5 6-1.5M16 14.5V20m0 0-3.5 8M16 20l3.5 8M11 13l-3 7m16-7 3 7" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm5.2 12.2L21 21" /></symbol>
+        <symbol id="i-hand" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-6.5a1.5 1.5 0 0 1 3 0V11m0-5a1.5 1.5 0 0 1 3 0v6m0-3.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.6-2.2L4.4 15a1.6 1.6 0 0 1 2.4-2.1L8 14" /></symbol>
+        <symbol id="i-help" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm-2.5 6.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01" /></symbol>
+        <symbol id="i-muscle" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 20c2-1 3-3 3.5-6C8 10 9 6 12 4c3 2 4 6 4.5 10 .5 3 1.5 5 3.5 6M9.5 9.5c1.5.8 3.5.8 5 0M8.6 14c2 1 4.8 1 6.8 0" /></symbol>
+        <symbol id="i-bone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M8.5 6.5 17.5 15.5a2.5 2.5 0 1 1 3 3 2.5 2.5 0 1 1-3 3 2.5 2.5 0 0 1-.5-2.4L8 10.6a2.5 2.5 0 0 1-2.4-.5 2.5 2.5 0 1 1-3-3 2.5 2.5 0 1 1 3-3 2.5 2.5 0 0 1 .5 2.4Z" transform="scale(.92) translate(1 0)" /></symbol>
+        <symbol id="i-xray" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2" /></symbol>
+        <symbol id="i-attach" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="18" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8" /><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M8 16c1-4 4-7 8-8" /></symbol>
+        <symbol id="i-reset" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" /></symbol>
+        <symbol id="i-eyeoff" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 3l18 18M10.6 5.6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.3 2.5 12 2.5 12S6 18.5 12 18.5c1.7 0 3.2-.5 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2" /></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18" /></symbol>
+        <symbol id="i-focus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 9V5a1 1 0 0 1 1-1h4m6 0h4a1 1 0 0 1 1 1v4m0 6v4a1 1 0 0 1-1 1h-4m-6 0H5a1 1 0 0 1-1-1v-4" /><circle cx="12" cy="12" r="2.5" fill="currentColor" /></symbol>
+        <symbol id="i-isolate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8" /><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="1.5 3" d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z" /></symbol>
+        <symbol id="i-flex" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M5 19c0-4 1-7 3-9l1-4h3l-1 3c3 0 5 1 6.5 3 1 1.4 1.5 3.2 1.5 5v2H5Z" /></symbol>
+        <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="12" cy="12" r="1" fill="currentColor" /></symbol>
+        <symbol id="i-bulb" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></symbol>
+        <symbol id="i-skip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M5 5l9 7-9 7V5Zm14 0v14" /></symbol>
+      </defs>
+    </svg>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
